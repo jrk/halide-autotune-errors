@@ -21,7 +21,7 @@ all: $(binaries)
 	gdb ./$<
 
 %.trace: %.exe
-	HL_TRACE=1 ./$< > $@
+	HL_TRACE=1 ./$< 2> $@
 	cat $@
 
 clean:
