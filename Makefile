@@ -1,6 +1,6 @@
 CXX = g++ -O3
 
-HALIDE_DIR=../FImage
+HALIDE_DIR ?= ../Halide
 HALIDE_BIN=$(HALIDE_DIR)/bin/$(BUILD_PREFIX)
 HALIDE_INC=$(HALIDE_DIR)/include
 
