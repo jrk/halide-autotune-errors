@@ -1,0 +1,15 @@
+# timeout1
+- segfaults on both old bounds and new bounds (time?)
+
+# error1
+same for both. invalid schedule. @TODO: investigate
+
+# error2
+- ~180s, ~1GB on old bounds
+- ~1800s, ~3.5GB on new bounds
+
+# timeout2
+- >176 minutes on new bounds
+
+# timeout3
+- >18.5 minutes on old bounds
