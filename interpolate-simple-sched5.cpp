@@ -7,13 +7,19 @@
 #include <string>
 
 // How many times to run (and take min)
-// #define AUTOTUNE_TRIALS 3
+#ifndef AUTOTUNE_TRIALS
+#define AUTOTUNE_TRIALS 3
+#endif
 
 // Limit in seconds to try running for (0 = no limit)
-// #define AUTOTUNE_LIMIT 0
+#ifndef AUTOTUNE_LIMIT
+#define AUTOTUNE_LIMIT 0
+#endif
 
 // Size to run with
-// #define AUTOTUNE_N 1024, 1024
+#ifndef AUTOTUNE_N
+#define AUTOTUNE_N 1024, 1024
+#endif
 
 inline void _autotune_timing_stub(Halide::Func& func) {
     func.compile_jit();

@@ -5,6 +5,21 @@ using namespace Halide;
 #include <iostream>
 #include <limits>
 
+// How many times to run (and take min)
+#ifndef AUTOTUNE_TRIALS
+#define AUTOTUNE_TRIALS 3
+#endif
+
+// Limit in seconds to try running for (0 = no limit)
+#ifndef AUTOTUNE_LIMIT
+#define AUTOTUNE_LIMIT 0
+#endif
+
+// Size to run with
+#ifndef AUTOTUNE_N
+#define AUTOTUNE_N 1024, 1024
+#endif
+
 #include "timing_prefix.h"
 
 #include <sys/time.h>
