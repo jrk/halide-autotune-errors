@@ -1,0 +1,33 @@
+let upsampled.extent.1.required = (min((((((upsampled.extent.1 + -1)/8)*8) + upsampled.min.1) + 8), (upsampled.min.1 + upsampled.extent.1)) - min(upsampled.min.1, ((upsampled.min.1 + upsampled.extent.1) + -8)));
+
+let upsampled.min.1.required = min(upsampled.min.1, ((upsampled.min.1 + upsampled.extent.1) + -8));
+
+let clamped.y.extent_realized.s.s = max(((upsampled.min.1 + upsampled.extent.1) + -1), min((((((upsampled.extent.1 + -1)/8)*8) + upsampled.min.1) + 7), ((upsampled.min.1 + upsampled.extent.1) + -1)));
+
+allocate clamped[float32 * ((upsampled.extent.0 + 1)*((clamped.y.extent_realized.s.s - upsampled.min.1.required) + 1))];
+
+produce clamped {
+  if ((((upsampled.s0.x % 2) == 0) || ((upsampled.s0.x % 2) != 0))) { // BUG! How did this get way up here?
+    for (clamped.s0.y, upsampled.min.1, upsampled.extent.1) {
+      for (clamped.s0.x, upsampled.min.0, (upsampled.extent.0 + 1)) {
+        clamped[((clamped.s0.x - upsampled.min.0) + ((clamped.s0.y - upsampled.min.1.required)*(upsampled.extent.0 + 1)))] = input[((clamped.s0.x + (clamped.s0.y*input.stride.1)) - (input.min.0 + (input.min.1*input.stride.1)))];
+      }
+    }
+  }
+}
+produce upsampled {
+  for (upsampled.s0.x, upsampled.min.0, upsampled.extent.0) {
+    for (upsampled.s0.y.y, 0, ((upsampled.extent.1 + 7)/8)) {
+      let upsampled.s0.y.yi.base = min(((upsampled.s0.y.y*8) + upsampled.min.1), ((upsampled.min.1 + upsampled.extent.1) + -8));
+      for (upsampled.s0.y.yi, 0, 8) {
+        allocate upsampledx[float32 * 1];
+        produce upsampledx {
+          upsampledx[0] = select(((upsampled.s0.x % 2) == 0), clamped[((upsampled.s0.x - upsampled.min.0) + (((upsampled.s0.y.yi.base + upsampled.s0.y.yi) - upsampled.min.1.required)*(upsampled.extent.0 + 1)))], clamped[(((upsampled.s0.x - upsampled.min.0) + (((upsampled.s0.y.yi.base + upsampled.s0.y.yi) - upsampled.min.1.required)*(upsampled.extent.0 + 1))) + 1)]);
+        }
+        upsampled[((upsampled.s0.x - upsampled.min.0) + (((upsampled.s0.y.yi.base + upsampled.s0.y.yi) - upsampled.min.1)*upsampled.stride.1))] = upsampledx[0];
+        free upsampledx;
+      }
+    }
+  }
+  free clamped;
+}
