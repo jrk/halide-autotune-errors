@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
     Var x("x"), y("y");
 
     Func clamped("clamped");
-    clamped(x, y) = input(clamp(x, 0, input.width()-1), clamp(y, 0, input.height()-1));
+    clamped(x, y) = input(x, y);
 
     upsampledx(x, y) = select((x % 2) == 0,
                               clamped(x, y),
@@ -67,7 +67,7 @@ int main(int argc, char **argv) {
     upsampled(x, y) = upsampledx(x, y);
 
     Var xi("xi"), yi("yi");
-    clamped.compute_root();
+    clamped.compute_root(); // passes if this is removed, switched to inline
     upsampled
         .split(y, y, yi, 8)
         .reorder(yi, y, x)
