@@ -16,31 +16,14 @@ int main(int argc, char **argv) {
 
     const unsigned int levels = 10;
 
-#if 0
-    std::vector<Func> downsampled;
-    std::vector<Func> downx;
-    std::vector<Func> interpolated;
-    std::vector<Func> upsampled;
-    std::vector<Func> upsampledx;
-    Var x("x"), y("y"), c("c");
-
-    for(size_t i = 0; i < levels; i++) {
-        downsampled.push_back(Func("downsampled"));
-        downx.push_back(Func("downx"));
-        interpolated.push_back(Func("interpolated"));
-        upsampled.push_back(Func("upsampled"));
-        upsampledx.push_back(Func("upsampledx"));
-    }
-#else
     Func downsampled[levels];
     Func downx[levels];
     Func interpolated[levels];
     Func upsampled[levels];
     Func upsampledx[levels];
     Var x("x"), y("y"), c("c");
-#endif
 
-    Func clamped("clamped");
+    Func clamped;
     clamped(x, y, c) = input(clamp(x, 0, input.width()-1), clamp(y, 0, input.height()-1), c);
 
     // This triggers a bug in llvm 3.3 (3.2 and trunk are fine), so we
