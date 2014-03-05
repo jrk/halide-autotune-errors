@@ -62,17 +62,15 @@ int main(int argc, char **argv) {
     clamped(x, y) = input(clamp(x, 0, input.width()-1), clamp(y, 0, input.height()-1));
 
     upsampledx(x, y) = select((x % 2) == 0,
-                                    clamped(x/2, y),
-                                    0.5f * (clamped(x/2, y) +
-                                            clamped(x/2+1, y)));
-    upsampled(x, y) = upsampledx(x, y/2);
+                              clamped(x, y),
+                              clamped(x+1, y));
+    upsampled(x, y) = upsampledx(x, y);
 
     Var xi("xi"), yi("yi");
     clamped.compute_root();
     upsampled
-        .split(x, x, xi, 4)
         .split(y, y, yi, 8)
-        .reorder(yi, xi, y, x)
+        .reorder(yi, y, x)
         .compute_root();
     upsampledx.compute_at(upsampled, yi);
 
