@@ -54,23 +54,18 @@ using std::vector;
 int main(int argc, char **argv) {
     ImageParam input(Float(32), 2, "input");
 
-    Func upsampled;
-    Func upsampledx;
+    Func upsampled("upsampled");
+    Func upsampledx("upsampledx");
     Var x("x"), y("y");
 
     Func clamped("clamped");
     clamped(x, y) = input(clamp(x, 0, input.width()-1), clamp(y, 0, input.height()-1));
 
-    upsampledx = Func("upsampledx");
-    upsampled = Func("upsampled");
     upsampledx(x, y) = select((x % 2) == 0,
                                     clamped(x/2, y),
                                     0.5f * (clamped(x/2, y) +
                                             clamped(x/2+1, y)));
-    upsampled(x, y) = select((y % 2) == 0,
-                                   upsampledx(x, y/2),
-                                   0.5f * (upsampledx(x, y/2) +
-                                           upsampledx(x, y/2+1)));
+    upsampled(x, y) = upsampledx(x, y/2);
 
     Var xi("xi"), yi("yi");
     clamped.compute_root();
