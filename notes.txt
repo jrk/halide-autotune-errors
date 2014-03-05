@@ -10,6 +10,8 @@ same for both. invalid schedule. @TODO: investigate
 
 # timeout2
 - >176 minutes on new bounds
+- segfault?
 
 # timeout3
 - >18.5 minutes on old bounds
+- segfault
