@@ -16,10 +16,11 @@
 #define AUTOTUNE_LIMIT 0
 #endif
 
-// Size to run with
-#ifndef AUTOTUNE_N
-#define AUTOTUNE_N 1024, 1024
-#endif
+// Size to run with - override Makefile setting - this is hacked down to 2D
+// #ifndef AUTOTUNE_N
+#undef AUTOTUNE_N
+#define AUTOTUNE_N 2048, 2048
+// #endif
 
 inline void _autotune_timing_stub(Halide::Func& func) {
     func.compile_jit();
@@ -41,20 +42,6 @@ inline void _autotune_timing_stub(Halide::Func& func) {
     exit(0);
 }
 
-
-#ifndef AUTOTUNE_HOOK
-#define AUTOTUNE_HOOK(x)
-#endif
-
-#ifndef BASELINE_HOOK
-#define BASELINE_HOOK(x)
-#endif
-
-#include "Halide.h"
-
-#define AUTOTUNE_HOOK(x)
-#define BASELINE_HOOK(x)
-
 using namespace Halide;
 
 #include <iostream>
@@ -64,53 +51,35 @@ using namespace Halide;
 
 using std::vector;
 
-double now() {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    static bool first_call = true;
-    static time_t first_sec = 0;
-    if (first_call) {
-        first_call = false;
-        first_sec = tv.tv_sec;
-    }
-    assert(tv.tv_sec >= first_sec);
-    return (tv.tv_sec - first_sec) + (tv.tv_usec / 1000000.0);
-}
-
 int main(int argc, char **argv) {
-    ImageParam input(Float(32), 3, "input");
+    ImageParam input(Float(32), 2, "input");
 
     Func upsampled;
     Func upsampledx;
-    Var x("x"), y("y"), c("c");
+    Var x("x"), y("y");
 
     Func clamped("clamped");
-    clamped(x, y, c) = input(clamp(x, 0, input.width()-1), clamp(y, 0, input.height()-1), c);
+    clamped(x, y) = input(clamp(x, 0, input.width()-1), clamp(y, 0, input.height()-1));
 
     upsampledx = Func("upsampledx");
     upsampled = Func("upsampled");
-    upsampledx(x, y, c) = select((x % 2) == 0,
-                                    clamped(x/2, y, c),
-                                    0.5f * (clamped(x/2, y, c) +
-                                            clamped(x/2+1, y, c)));
-    upsampled(x, y, c) = select((y % 2) == 0,
-                                   upsampledx(x, y/2, c),
-                                   0.5f * (upsampledx(x, y/2, c) +
-                                           upsampledx(x, y/2+1, c)));
+    upsampledx(x, y) = select((x % 2) == 0,
+                                    clamped(x/2, y),
+                                    0.5f * (clamped(x/2, y) +
+                                            clamped(x/2+1, y)));
+    upsampled(x, y) = select((y % 2) == 0,
+                                   upsampledx(x, y/2),
+                                   0.5f * (upsampledx(x, y/2) +
+                                           upsampledx(x, y/2+1)));
 
-    Func final = upsampled;
-    {
-        std::map<std::string, Halide::Internal::Function> funcs = Halide::Internal::find_transitive_calls((final).function());
+    Var xi("xi"), yi("yi");
+    clamped.compute_root();
+    upsampled
+        .split(x, x, xi, 4)
+        .split(y, y, yi, 8)
+        .reorder(yi, xi, y, x)
+        .compute_root();
+    upsampledx.compute_at(upsampled, yi);
 
-        Halide::Var _x0, _y1, _c2, _x3, _y4, _c5, _x6, _c8, _x12, _y13, _x15, _y16, _x18, _c20, _x21, _y22, _c23, _y25, _x27, _y28;
-        clamped.compute_root();
-        upsampled
-            .split(x, x, _x21, 4)
-            .split(y, y, _y22, 8)
-            .reorder(_y22, _x21, y, c, x)
-            .compute_root();
-        upsampledx.compute_at(upsampled, _y22);
-
-        _autotune_timing_stub(final);
-    };
+    _autotune_timing_stub(upsampled);
 }
