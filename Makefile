@@ -12,7 +12,7 @@ traces := $(patsubst %.exe,%.trace,$(binaries))
 all: $(binaries)
 
 %.exe: %.cpp $(HALIDE_BIN) $(HALIDE_INC)
-	$(CXX) $< -DAUTOTUNE_N=1024,1024 -DAUTOTUNE_TRIALS=1 $(LDFLAGS) -I$(HALIDE_INC) -o $@
+	$(CXX) $< -DAUTOTUNE_N=2048,2048,3 -DAUTOTUNE_TRIALS=1 -DAUTOTUNE_LIMIT=10000 $(LDFLAGS) -I$(HALIDE_INC) -o $@
 
 %.run: %.exe
 	./$<
