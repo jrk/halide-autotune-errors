@@ -116,9 +116,7 @@ int main(int argc, char **argv) {
                                    2.0f * downx[1](x, y*2, c) +
                                    downx[1](x, y*2+1, c)) * 0.25f;
     // }
-    #endif
-    interpolated[1] = Func("interpolated"); // keep names stable
-    #if 0
+    interpolated[1] = Func("interpolated");
     interpolated[1](x, y, c) = downsampled[1](x, y, c);
     #else
     interpolated[1] = clamped;
@@ -128,7 +126,7 @@ int main(int argc, char **argv) {
         upsampled[0] = Func("upsampled");
         interpolated[0] = Func("interpolated");
         upsampledx[0](x, y, c) = select((x % 2) == 0,
-                                        interpolated[0+1](x/2, y, c),
+                                        interpolated[1](x/2, y, c),
                                         0.5f * (interpolated[0+1](x/2, y, c) +
                                                 interpolated[0+1](x/2+1, y, c)));
         upsampled[0](x, y, c) = select((y % 2) == 0,
@@ -136,29 +134,14 @@ int main(int argc, char **argv) {
                                        0.5f * (upsampledx[0](x, y/2, c) +
                                                upsampledx[0](x, y/2+1, c)));
         // interpolated[0](x, y, c) = downsampled[0](x, y, c) + (1.0f - downsampled[0](x, y, 3)) * upsampled[0](x, y, c);
-        interpolated[0](x, y, c) = upsampled[0](x, y, c);
     // }
 
-    Func final = interpolated[0];
+    Func final = upsampled[0];
     {
         std::map<std::string, Halide::Internal::Function> funcs = Halide::Internal::find_transitive_calls((final).function());
 
         Halide::Var _x0, _y1, _c2, _x3, _y4, _c5, _x6, _c8, _x12, _y13, _x15, _y16, _x18, _c20, _x21, _y22, _c23, _y25, _x27, _y28;
         Halide::Func(funcs["clamped"])
-        .compute_root()
-        ;
-        #if 0
-        Halide::Func(funcs["downsampled"])
-        .compute_root()
-        ;
-        Halide::Func(funcs["downsampled$2"])
-        .compute_root()
-        ;
-        Halide::Func(funcs["downx$2"])
-        .compute_root()
-        ;
-        #endif
-        Halide::Func(funcs["interpolated$3"])
         .compute_root()
         ;
         Halide::Func(funcs["upsampledx$2"])
@@ -168,9 +151,6 @@ int main(int argc, char **argv) {
         .split(x, x, _x21, 4)
         .split(y, y, _y22, 8)
         .reorder(_y22, _x21, y, c, x)
-        .compute_root()
-        ;
-        Halide::Func(funcs["interpolated$2"])
         .compute_root()
         ;
 
