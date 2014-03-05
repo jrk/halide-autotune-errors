@@ -102,40 +102,44 @@ int main(int argc, char **argv) {
     // rewrite it in a way that doesn't trigger the bug. The rewritten
     // form assumes the input alpha is zero or one.
     // downsampled[0](x, y, c) = select(c < 3, clamped(x, y, c) * clamped(x, y, 3), clamped(x, y, 3));
-    downsampled[0](x, y, c) = clamped(x, y, c) * clamped(x, y, 3);
+    #if 0
+    // downsampled[0](x, y, c) = clamped(x, y, c) * clamped(x, y, 3);
+    downsampled[0] = clamped;
 
-    for (unsigned int l = 1; l < levels; ++l) {
-        downx[l] = Func("downx");
-        downsampled[l] = Func("downsampled");
-        downx[l](x, y, c) = (downsampled[l-1](x*2-1, y, c) +
-                             2.0f * downsampled[l-1](x*2, y, c) +
-                             downsampled[l-1](x*2+1, y, c)) * 0.25f;
-        downsampled[l](x, y, c) = (downx[l](x, y*2-1, c) +
-                                   2.0f * downx[l](x, y*2, c) +
-                                   downx[l](x, y*2+1, c)) * 0.25f;
-    }
-    interpolated[levels-1] = Func("interpolated");
-    interpolated[levels-1](x, y, c) = downsampled[levels-1](x, y, c);
-    for (unsigned int l = levels-2; l < levels; --l) {
-        upsampledx[l] = Func("upsampledx");
-        upsampled[l] = Func("upsampled");
-        interpolated[l] = Func("interpolated");
-        upsampledx[l](x, y, c) = select((x % 2) == 0,
-                                        interpolated[l+1](x/2, y, c),
-                                        0.5f * (interpolated[l+1](x/2, y, c) +
-                                                interpolated[l+1](x/2+1, y, c)));
-        upsampled[l](x, y, c) = select((y % 2) == 0,
-                                       upsampledx[l](x, y/2, c),
-                                       0.5f * (upsampledx[l](x, y/2, c) +
-                                               upsampledx[l](x, y/2+1, c)));
-        interpolated[l](x, y, c) = downsampled[l](x, y, c) + (1.0f - downsampled[l](x, y, 3)) * upsampled[l](x, y, c);
-    }
+    // for (unsigned int l = 1; l < levels; ++l) {
+        downx[1] = Func("downx");
+        downsampled[1] = Func("downsampled");
+        downx[1](x, y, c) = (downsampled[0](x*2-1, y, c) +
+                             2.0f * downsampled[0](x*2, y, c) +
+                             downsampled[0](x*2+1, y, c)) * 0.25f;
+        downsampled[1](x, y, c) = (downx[1](x, y*2-1, c) +
+                                   2.0f * downx[1](x, y*2, c) +
+                                   downx[1](x, y*2+1, c)) * 0.25f;
+    // }
+    #endif
+    interpolated[1] = Func("interpolated"); // keep names stable
+    #if 0
+    interpolated[1](x, y, c) = downsampled[1](x, y, c);
+    #else
+    interpolated[1] = clamped;
+    #endif
+    // for (unsigned int l = levels-2; l < levels; --l) {
+        upsampledx[0] = Func("upsampledx");
+        upsampled[0] = Func("upsampled");
+        interpolated[0] = Func("interpolated");
+        upsampledx[0](x, y, c) = select((x % 2) == 0,
+                                        interpolated[0+1](x/2, y, c),
+                                        0.5f * (interpolated[0+1](x/2, y, c) +
+                                                interpolated[0+1](x/2+1, y, c)));
+        upsampled[0](x, y, c) = select((y % 2) == 0,
+                                       upsampledx[0](x, y/2, c),
+                                       0.5f * (upsampledx[0](x, y/2, c) +
+                                               upsampledx[0](x, y/2+1, c)));
+        // interpolated[0](x, y, c) = downsampled[0](x, y, c) + (1.0f - downsampled[0](x, y, 3)) * upsampled[0](x, y, c);
+        interpolated[0](x, y, c) = upsampled[0](x, y, c);
+    // }
 
-    Func normalize("normalize");
-    normalize(x, y, c) = interpolated[0](x, y, c) / interpolated[0](x, y, 3);
-
-    Func final("final");
-    final(x, y, c) = normalize(x, y, c);
+    Func final = interpolated[0];
     {
         std::map<std::string, Halide::Internal::Function> funcs = Halide::Internal::find_transitive_calls((final).function());
 
@@ -143,6 +147,7 @@ int main(int argc, char **argv) {
         Halide::Func(funcs["clamped"])
         .compute_root()
         ;
+        #if 0
         Halide::Func(funcs["downsampled"])
         .compute_root()
         ;
@@ -152,14 +157,12 @@ int main(int argc, char **argv) {
         Halide::Func(funcs["downx$2"])
         .compute_root()
         ;
-        Halide::Func(funcs["interpolated$2"])
-        .compute_root()
-        ;
+        #endif
         Halide::Func(funcs["interpolated$3"])
         .compute_root()
         ;
-        Halide::Func(funcs["normalize"])
-        .compute_root()
+        Halide::Func(funcs["upsampledx$2"])
+        .compute_at(Halide::Func(funcs["upsampled$2"]), _y22)
         ;
         Halide::Func(funcs["upsampled$2"])
         .split(x, x, _x21, 4)
@@ -167,133 +170,10 @@ int main(int argc, char **argv) {
         .reorder(_y22, _x21, y, c, x)
         .compute_root()
         ;
-        Halide::Func(funcs["upsampledx$2"])
-        .compute_at(Halide::Func(funcs["upsampled$2"]), _y22)
-        ;
-        Halide::Func(funcs["final"])
+        Halide::Func(funcs["interpolated$2"])
         .compute_root()
         ;
-        
 
         _autotune_timing_stub(final);
     };
-
-    int sched;
-    char *target = getenv("HL_TARGET");
-    if (target && std::string(target) == "ptx") {
-        sched = 4;
-    } else {
-        sched = 2;
-    }
-
-    switch (sched) {
-    case 0:
-    {
-        //std::cout << "Flat schedule." << std::endl;
-        for (unsigned int l = 0; l < levels; ++l) {
-            downsampled[l].compute_root();
-            interpolated[l].compute_root();
-        }
-        final.compute_root();
-        break;
-    }
-    case 1:
-    {
-        //std::cout << "Flat schedule with vectorization." << std::endl;
-        for (unsigned int l = 0; l < levels; ++l) {
-            downsampled[l].compute_root().vectorize(x,4);
-            interpolated[l].compute_root().vectorize(x,4);
-        }
-        final.compute_root();
-        break;
-    }
-    case 2:
-    {
-        Var xi, yi;
-        //std::cout << "Flat schedule with parallelization + vectorization." << std::endl;
-        clamped.compute_root().parallel(y).reorder(c, x, y).reorder_storage(c, x, y).vectorize(c, 4);
-        for (unsigned int l = 1; l < levels-1; ++l) {
-            if (l > 0) downsampled[l].compute_root().parallel(y).reorder(c, x, y).reorder_storage(c, x, y).vectorize(c, 4);
-            interpolated[l].compute_root().parallel(y).reorder(c, x, y).reorder_storage(c, x, y).vectorize(c, 4);
-            interpolated[l].unroll(x, 2).unroll(y, 2);
-        }
-        final.reorder(c, x, y).bound(c, 0, 3).parallel(y);
-        final.tile(x, y, xi, yi, 2, 2).unroll(xi).unroll(yi);
-        break;
-    }
-    case 3:
-    {
-        //std::cout << "Flat schedule with vectorization sometimes." << std::endl;
-        for (unsigned int l = 0; l < levels; ++l) {
-            if (l + 4 < levels) {
-                Var yo,yi;
-                downsampled[l].compute_root().vectorize(x,4);
-                interpolated[l].compute_root().vectorize(x,4);
-            } else {
-                downsampled[l].compute_root();
-                interpolated[l].compute_root();
-            }
-        }
-        final.compute_root();
-        break;
-    }
-    case 4:
-    {
-        //std::cout << "GPU schedule." << std::endl;
-
-        // Some gpus don't have enough memory to process the entire
-        // image, so we process the image in tiles.
-        Var yo, yi, xo, xi;
-        final.reorder(c, x, y).bound(c, 0, 3).vectorize(x, 4);
-        final.tile(x, y, xo, yo, xi, yi, input.width()/4, input.height()/4);
-        normalize.compute_at(final, xo).reorder(c, x, y).cuda_tile(x, y, 16, 16).unroll(c);
-
-        // Start from level 1 to save memory - level zero will be computed on demand
-        for (unsigned int l = 1; l < levels; ++l) {
-            int tile_size = 32 >> l;
-            if (tile_size < 1) tile_size = 1;
-            if (tile_size > 16) tile_size = 16;
-            downsampled[l].compute_root().cuda_tile(x, y, c, tile_size, tile_size, 4);
-            interpolated[l].compute_at(final, xo).cuda_tile(x, y, c, tile_size, tile_size, 4);
-        }
-
-        break;
-    }
-    default:
-        assert(0 && "No schedule with this number.");
-    }
-
-    BASELINE_HOOK(final);
-
-#if 0
-    // JIT compile the pipeline eagerly, so we don't interfere with timing
-    final.compile_jit();
-
-    // Image<float> in_png = load<float>(argv[1]);
-    Image<float> out(2048, 2048, 3);
-    // assert(in_png.channels() == 4);
-    // input.set(in_png);
-    final.infer_input_bounds(out);
-
-    std::cout << "Running... " << std::endl;
-    double min = std::numeric_limits<double>::infinity();
-    const unsigned int iters = 20;
-
-    for (unsigned int x = 0; x < iters; ++x) {
-        double before = now();
-        final.realize(out);
-        double after = now();
-        double amt = after - before;
-
-        std::cout << "   " << amt * 1000 << std::endl;
-        if (amt < min) min = amt;
-
-    }
-    std::cout << " took " << min * 1000 << " msec." << std::endl;
-
-    // vector<Argument> args;
-    // args.push_back(input);
-    // final.compile_to_assembly("test.s", args);
-    // save(out, argv[2]);
-#endif
 }
